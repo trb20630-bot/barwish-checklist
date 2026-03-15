@@ -225,22 +225,46 @@ const dbRef=db.ref('barwish');
 
 // Sync state: local cache backed by localStorage + Firebase
 let fbReady=false;
-let fbSyncing=false; // prevent echo loops
-const SYNC_KEYS=Object.values(K); // all keys to sync
+let fbSyncing=false;
+const SYNC_KEYS=Object.values(K);
+
+// Keys that store arrays (Firebase converts arrays to objects)
+const ARRAY_KEYS=new Set([K.collapse,K.midC,K.majorC,K.subgrpC,K.wkHistory,K.userItems]);
 
 // Read from localStorage (fast, offline-first)
 function ld(k){try{return JSON.parse(localStorage.getItem(k))||{}}catch{return{}}}
 function ldA(k){try{return JSON.parse(localStorage.getItem(k))||[]}catch{return[]}}
 
+// Convert Firebase object-with-numeric-keys back to array
+function fbToArray(val){
+  if(Array.isArray(val))return val;
+  if(val&&typeof val==='object'){
+    const keys=Object.keys(val);
+    if(keys.length>0&&keys.every(k=>/^\d+$/.test(k))){
+      const arr=[];keys.forEach(k=>{arr[parseInt(k)]=val[k]});return arr.filter(x=>x!==undefined)
+    }
+  }
+  return val
+}
+
 // Write to localStorage AND push to Firebase
 function sv(k,v){
   localStorage.setItem(k,JSON.stringify(v));
-  if(!fbSyncing)dbRef.child(k).set(v)
+  if(!fbSyncing){
+    // Firebase deletes nodes with empty objects/null; wrap to preserve
+    const fbVal=(v&&typeof v==='object'&&Object.keys(v).length===0)?{__empty:true}:v;
+    dbRef.child(k).set(fbVal).catch(err=>console.warn('Firebase write error:',k,err.message))
+  }
+}
+
+// Unwrap Firebase empty-object marker
+function fbUnwrap(val){
+  if(val&&typeof val==='object'&&val.__empty===true)return{};
+  return val
 }
 
 // Firebase -> localStorage sync (listen for remote changes)
 function initFirebaseSync(){
-  // Upload current localStorage to Firebase if Firebase is empty
   dbRef.once('value').then(snap=>{
     const remoteData=snap.val();
     if(!remoteData){
@@ -248,19 +272,23 @@ function initFirebaseSync(){
       const batch={};
       SYNC_KEYS.forEach(k=>{
         const raw=localStorage.getItem(k);
-        if(raw){try{batch[k]=JSON.parse(raw)}catch{}}
+        if(raw){try{const parsed=JSON.parse(raw);batch[k]=(parsed&&typeof parsed==='object'&&Object.keys(parsed).length===0)?{__empty:true}:parsed}catch{}}
       });
       if(Object.keys(batch).length>0)dbRef.set(batch);
+      console.log('Firebase: initial upload done');
     }else{
-      // Merge: remote wins for data keys
+      // Remote wins
       fbSyncing=true;
       SYNC_KEYS.forEach(k=>{
         if(remoteData[k]!==undefined){
-          localStorage.setItem(k,JSON.stringify(remoteData[k]))
+          let val=fbUnwrap(remoteData[k]);
+          if(ARRAY_KEYS.has(k))val=fbToArray(val);
+          localStorage.setItem(k,JSON.stringify(val))
         }
       });
       fbSyncing=false;
       render();
+      console.log('Firebase: synced from remote');
     }
     fbReady=true;
 
@@ -268,20 +296,20 @@ function initFirebaseSync(){
     SYNC_KEYS.forEach(k=>{
       dbRef.child(k).on('value',snap=>{
         if(!fbReady)return;
-        const val=snap.val();
-        const localRaw=localStorage.getItem(k);
+        let val=fbUnwrap(snap.val());
+        if(ARRAY_KEYS.has(k))val=fbToArray(val);
+        if(val===null||val===undefined)return;
         const remoteStr=JSON.stringify(val);
-        if(localRaw!==remoteStr&&remoteStr!=='null'){
+        const localRaw=localStorage.getItem(k);
+        if(localRaw!==remoteStr){
           fbSyncing=true;
           localStorage.setItem(k,remoteStr);
           fbSyncing=false;
-          render();
-        }else if(val===null&&localRaw){
-          // Remote deleted, keep local? No — sync means remote wins
+          render()
         }
       })
     })
-  })
+  }).catch(err=>{console.error('Firebase connection error:',err.message)})
 }
 
 function mid(c,i){return c+'::'+i}
