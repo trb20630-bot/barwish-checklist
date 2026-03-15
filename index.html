@@ -233,7 +233,7 @@ const ARRAY_KEYS=new Set([K.collapse,K.midC,K.majorC,K.subgrpC,K.wkHistory,K.use
 
 // Read from localStorage (fast, offline-first)
 function ld(k){try{return JSON.parse(localStorage.getItem(k))||{}}catch{return{}}}
-function ldA(k){try{return JSON.parse(localStorage.getItem(k))||[]}catch{return[]}}
+function ldA(k){try{const v=JSON.parse(localStorage.getItem(k));if(Array.isArray(v))return v;if(v&&typeof v==='object'){const a=fbToArray(v);return Array.isArray(a)?a:[]}return[]}catch{return[]}}
 
 // Convert Firebase object-with-numeric-keys back to array
 function fbToArray(val){
