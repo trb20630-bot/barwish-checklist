@@ -547,11 +547,7 @@ function itemHtml(id,orig,state,showSrc){
   let src='';if(showSrc)src=`<span class="pri-source">${eh(id.split('::')[0])}</span>`;
   let noteH='';if(note)noteH=`<div class="item-note">${eh(note)}</div>`;
   const detActive=detail?' act-detail-has':'';
-  let wkBtns='';
-  if(currentView==='priority'){
-    wkBtns=`<button class="act-btn wk-this ${isTw?'active':''}" data-id="${ea(id)}" data-wk="this" title="本週任務">⭐</button><button class="act-btn wk-next ${isNw?'active':''}" data-id="${ea(id)}" data-wk="next" title="下週任務">🔵</button>`;
-  }
-  return `<div class="item-wrap ${chk?'checked':''}" data-id="${ea(id)}"><div class="item-row"><div class="cb"></div><span class="item-label">${eh(name)}${tags}${src}</span><div class="item-actions">${wkBtns}<button class="act-btn btn-sort" data-id="${ea(id)}" title="排序">&#9733;</button><button class="act-btn btn-edit" data-id="${ea(id)}" data-original="${ea(orig)}" title="修改">&#9998;</button><button class="act-btn btn-note" data-id="${ea(id)}" title="備註">&#9998;&#xFE0E;</button><button class="act-btn btn-detail${detActive}" data-id="${ea(id)}" data-original="${ea(orig)}" title="詳文">&#9776;</button></div></div>${noteH}</div>`
+  return `<div class="item-wrap ${chk?'checked':''}" data-id="${ea(id)}"><div class="item-row"><div class="cb"></div><span class="item-label">${eh(name)}${tags}${src}</span><div class="item-actions"><button class="act-btn btn-sort" data-id="${ea(id)}" title="排序">&#9733;</button><button class="act-btn btn-edit" data-id="${ea(id)}" data-original="${ea(orig)}" title="修改">&#9998;</button><button class="act-btn btn-note" data-id="${ea(id)}" title="備註">&#9998;&#xFE0E;</button><button class="act-btn btn-detail${detActive}" data-id="${ea(id)}" data-original="${ea(orig)}" title="詳文">&#9776;</button></div></div>${noteH}</div>`
 }
 
 function wkItemHtml(id,orig,doneMap,type){
@@ -699,8 +695,6 @@ function bindAll(root){
       else{const p=ld(K.priority);if(val)p[id]=val;else delete p[id];sv(K.priority,p)}
       closeDd();render()})});
     setTimeout(()=>{const h=()=>{closeDd();document.removeEventListener('click',h)};document.addEventListener('click',h)},0)})});
-
-  root.querySelectorAll('.wk-this,.wk-next').forEach(el=>{if(el.classList.contains('btn-wk-move-next')||el.classList.contains('btn-wk-move-this'))return;el.addEventListener('click',e=>{e.stopPropagation();const id=el.dataset.id,wk=el.dataset.wk,key=wk==='this'?K.thisWeek:K.nextWeek,w=ld(key);w[id]=!w[id];if(!w[id]){delete w[id];if(wk==='this'){const ex=ld(K.wkExtra);delete ex[id];sv(K.wkExtra,ex)}}else if(wk==='this'){markExtraIfNeeded(id)};sv(key,w);render()})});
 
   root.querySelectorAll('.btn-edit').forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();const id=el.dataset.id,orig=el.dataset.original,cn=dn(id,orig);showModal('修改名稱',`<input type="text" id="editInput" value="${ea(cn)}" />`,()=>{const v=document.getElementById('editInput').value.trim();if(!v)return;const r=ld(K.rename);if(v===orig)delete r[id];else r[id]=v;sv(K.rename,r);render()})})});
   root.querySelectorAll('.btn-note').forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();const id=el.dataset.id,cn=ld(K.note)[id]||'';showModal('備註',`<textarea id="noteInput" placeholder="輸入備註...">${eh(cn)}</textarea>`,()=>{const v=document.getElementById('noteInput').value.trim(),n=ld(K.note);if(v)n[id]=v;else delete n[id];sv(K.note,n);render()})})});
