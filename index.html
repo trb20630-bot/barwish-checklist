@@ -181,6 +181,8 @@
     @media(max-width:768px){.modal{max-height:90vh;overflow-y:auto}.modal.modal-lg{max-width:95vw;padding:20px}.modal.modal-lg textarea{min-height:260px}}
     @media(max-width:480px){header{padding:20px 16px 0}.logo{font-size:26px}.container{padding:12px}.major-header{padding:14px 16px}.major-title{font-size:17px}.major-progress{padding:0 16px 10px}.major-body-inner{padding:4px 4px 8px}.mid-header{padding:10px 12px}.mid-title{font-size:15px}.item-row{padding:10px 8px 10px 16px;gap:6px}.act-btn{width:32px;height:32px;font-size:13px;min-width:32px}.item-actions{gap:3px;flex-wrap:wrap}.view-btn{font-size:13px;padding:10px 0}.modal{padding:20px;margin:12px}.modal-overlay{padding:12px}.wk-section-title{font-size:17px}.sort-dropdown{min-width:140px}}
   </style>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 </head>
 <body>
 <header>
@@ -210,14 +212,78 @@ const GROUPS=[{major:"主產品",type:"nested",mids:[{mid:"酒類",entries:[{typ
 const K={checked:'barwish_checked',collapse:'barwish_open',midC:'barwish_mid_open',majorC:'barwish_major_open',subgrpC:'barwish_subgrp_open',priority:'barwish_priority',rename:'barwish_rename',note:'barwish_note',detail:'barwish_detail',thisWeek:'barwish_wk_this',nextWeek:'barwish_wk_next',wkExtra:'barwish_wk_extra',wkHistory:'barwish_wk_history',wkSavedWeek:'barwish_wk_saved',userItems:'barwish_user_items'};
 
 let currentView='main';
-let serverNow=null; // will be set by API
-let serverFetchedAt=0; // performance.now() when fetched
+let serverNow=null;
+let serverFetchedAt=0;
 let countdownTimer=null;
 const DAYS=['日','一','二','三','四','五','六'];
 
+// Firebase init
+const firebaseConfig={apiKey:"AIzaSyCEQbHcR776YxeGt6ZaSKInECzhlCkuy2Q",authDomain:"barwish-checklist.firebaseapp.com",databaseURL:"https://barwish-checklist-default-rtdb.firebaseio.com",projectId:"barwish-checklist",storageBucket:"barwish-checklist.firebasestorage.app",messagingSenderId:"390316500862",appId:"1:390316500862:web:eddd56a0151d8cf671b52f",measurementId:"G-JK77RDLY1W"};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+const dbRef=db.ref('barwish');
+
+// Sync state: local cache backed by localStorage + Firebase
+let fbReady=false;
+let fbSyncing=false; // prevent echo loops
+const SYNC_KEYS=Object.values(K); // all keys to sync
+
+// Read from localStorage (fast, offline-first)
 function ld(k){try{return JSON.parse(localStorage.getItem(k))||{}}catch{return{}}}
-function sv(k,v){localStorage.setItem(k,JSON.stringify(v))}
 function ldA(k){try{return JSON.parse(localStorage.getItem(k))||[]}catch{return[]}}
+
+// Write to localStorage AND push to Firebase
+function sv(k,v){
+  localStorage.setItem(k,JSON.stringify(v));
+  if(!fbSyncing)dbRef.child(k).set(v)
+}
+
+// Firebase -> localStorage sync (listen for remote changes)
+function initFirebaseSync(){
+  // Upload current localStorage to Firebase if Firebase is empty
+  dbRef.once('value').then(snap=>{
+    const remoteData=snap.val();
+    if(!remoteData){
+      // First time: push all localStorage to Firebase
+      const batch={};
+      SYNC_KEYS.forEach(k=>{
+        const raw=localStorage.getItem(k);
+        if(raw){try{batch[k]=JSON.parse(raw)}catch{}}
+      });
+      if(Object.keys(batch).length>0)dbRef.set(batch);
+    }else{
+      // Merge: remote wins for data keys
+      fbSyncing=true;
+      SYNC_KEYS.forEach(k=>{
+        if(remoteData[k]!==undefined){
+          localStorage.setItem(k,JSON.stringify(remoteData[k]))
+        }
+      });
+      fbSyncing=false;
+      render();
+    }
+    fbReady=true;
+
+    // Listen for realtime changes
+    SYNC_KEYS.forEach(k=>{
+      dbRef.child(k).on('value',snap=>{
+        if(!fbReady)return;
+        const val=snap.val();
+        const localRaw=localStorage.getItem(k);
+        const remoteStr=JSON.stringify(val);
+        if(localRaw!==remoteStr&&remoteStr!=='null'){
+          fbSyncing=true;
+          localStorage.setItem(k,remoteStr);
+          fbSyncing=false;
+          render();
+        }else if(val===null&&localRaw){
+          // Remote deleted, keep local? No — sync means remote wins
+        }
+      })
+    })
+  })
+}
+
 function mid(c,i){return c+'::'+i}
 function dn(id,orig){return ld(K.rename)[id]||orig}
 
@@ -451,7 +517,7 @@ function fmtCountdown(ms){
 }
 
 function settleWeek(){
-  const cur=curWeekKey(),saved=localStorage.getItem(K.wkSavedWeek);
+  const cur=curWeekKey();let saved;try{saved=JSON.parse(localStorage.getItem(K.wkSavedWeek))}catch{saved=localStorage.getItem(K.wkSavedWeek)}
   if(saved&&saved!==cur){
     const tw=ld(K.thisWeek),done=ld(K.checked),nw=ld(K.nextWeek),extra=ld(K.wkExtra),hist=ldA(K.wkHistory);
     const ids=Object.keys(tw).filter(k=>tw[k]);
@@ -466,7 +532,7 @@ function settleWeek(){
     Object.keys(nw).filter(k=>nw[k]).forEach(id=>{newTw[id]=true});
     sv(K.thisWeek,newTw);sv(K.nextWeek,{});sv(K.wkExtra,{});
   }
-  localStorage.setItem(K.wkSavedWeek,cur);
+  sv(K.wkSavedWeek,cur);
 }
 
 function itemHtml(id,orig,state,showSrc){
@@ -618,7 +684,7 @@ function renderWeekly(){
 
 function bindAll(root){
   const app=document.getElementById('app');
-  function bToggle(sel,sk,da,pc){app.querySelectorAll(sel).forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();const c=el.closest(pc);c.classList.toggle('open');const cur=ldA(sk),n=c.dataset[da];if(c.classList.contains('open')){if(!cur.includes(n))cur.push(n)}else{const i=cur.indexOf(n);if(i!==-1)cur.splice(i,1)}localStorage.setItem(sk,JSON.stringify(cur))})})}
+  function bToggle(sel,sk,da,pc){app.querySelectorAll(sel).forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();const c=el.closest(pc);c.classList.toggle('open');const cur=ldA(sk),n=c.dataset[da];if(c.classList.contains('open')){if(!cur.includes(n))cur.push(n)}else{const i=cur.indexOf(n);if(i!==-1)cur.splice(i,1)}sv(sk,cur)})})}
   bToggle('.major-header',K.majorC,'major','.major-group');bToggle('.mid-header',K.midC,'mid','.mid-group');bToggle('.subgrp-header',K.subgrpC,'subgrp','.sub-group');bToggle('.cat-header',K.collapse,'cat','.category');
 
   root.querySelectorAll('.cb').forEach(el=>{if(el.closest('[data-wktype]'))return;el.addEventListener('click',e=>{e.stopPropagation();const w=el.closest('.item-wrap'),id=w.dataset.id,s=ld(K.checked);s[id]=!s[id];if(!s[id])delete s[id];sv(K.checked,s);render()})});
@@ -649,10 +715,11 @@ document.querySelectorAll('.view-btn').forEach(b=>{b.addEventListener('click',()
 // One-time: clear history
 if(!localStorage.getItem('barwish_history_cleared_v1')){localStorage.removeItem('barwish_wk_history');localStorage.setItem('barwish_history_cleared_v1','1')}
 
-// Init: fetch Taipei time, then render
+// Init: fetch Taipei time, sync Firebase, then render
 (async()=>{
   await fetchTaipeiTime();
   render();
+  initFirebaseSync();
 })();
 </script>
 </body>
