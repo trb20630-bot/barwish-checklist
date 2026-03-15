@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BarWish — Checklist</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#131313;color:#e8e0d8;min-height:100vh;padding-bottom:60px;overflow-x:hidden}
+    header{background:linear-gradient(135deg,#1c1c1c,#181818);padding:28px 32px 0;text-align:center;border-bottom:1px solid #333}
+    .logo{font-size:32px;font-weight:700;letter-spacing:3px;color:#e8e0d8}.logo span{color:#888}
+    .subtitle{font-size:13px;opacity:.4;margin-top:6px;letter-spacing:4px;text-transform:uppercase}
+    .view-toggle{display:flex;justify-content:center;gap:0;margin-top:20px;max-width:720px;margin-left:auto;margin-right:auto}
+    .view-btn{flex:1;max-width:200px;padding:12px 0;text-align:center;font-size:14px;font-weight:600;letter-spacing:1px;color:#666;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;user-select:none}
+    .view-btn:hover{color:#999}.view-btn.active{color:#c8c0b8;border-bottom-color:#888}
+    .total-progress{max-width:720px;margin:28px auto 8px;padding:0 24px}
+    .total-progress-label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;color:#888;font-weight:600;letter-spacing:1px}
+    .progress-bar-outer{background:#222;border-radius:6px;height:10px;overflow:hidden}
+    .progress-bar-inner{height:100%;background:linear-gradient(90deg,#666,#999);border-radius:6px;transition:width .4s ease}
+    .container{max-width:720px;margin:0 auto;padding:20px 24px}
+    .priority-bar{max-width:720px;margin:20px auto 0;padding:0 24px}
+    .priority-bar-inner{border:1px solid #333;border-radius:14px;background:linear-gradient(135deg,#1a1a1a,#181818);overflow:hidden}
+    .priority-bar-header{padding:16px 22px;font-size:18px;font-weight:800;letter-spacing:2px;color:#c8c0b8;background:rgba(136,136,136,.05);border-bottom:1px solid #333;display:flex;align-items:center;gap:10px}
+    .priority-bar-header::before{content:"\2605";font-size:16px;color:#888}
+    .priority-bar-body{padding:8px 10px 12px}
+    .pri-level-title{font-size:13px;font-weight:700;letter-spacing:1px;padding:10px 12px 6px}
+    .pri-level-high{color:#c0a0a0}.pri-level-low{color:#a0b0c0}
+    .pri-level-divider{height:1px;background:#2a2a2a;margin:6px 12px}
+    .priority-bar .item-row{padding:10px 16px}
+    .priority-bar .pri-source{font-size:11px;color:#666;margin-left:4px}
+    .priority-empty-msg{padding:20px;text-align:center;font-size:14px;opacity:.35}
+    .major-group{margin-bottom:16px;border:1px solid #2a2a2a;border-radius:12px;overflow:hidden;background:rgba(136,136,136,.02)}
+    .major-header{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;cursor:pointer;user-select:none;background:rgba(136,136,136,.04);transition:background .2s}
+    .major-header:hover{background:rgba(136,136,136,.07)}
+    .major-header-left{display:flex;align-items:center;gap:12px}
+    .major-arrow{font-size:12px;color:#999;transition:transform .3s;display:inline-block}
+    .major-group.open>.major-header .major-arrow{transform:rotate(90deg)}
+    .major-title{font-size:20px;font-weight:800;color:#c8c0b8;letter-spacing:2px}
+    .major-count{font-size:13px;color:#666;font-weight:600}
+    .major-progress{padding:0 22px 14px;background:rgba(136,136,136,.04)}
+    .major-progress .progress-bar-outer{height:6px}
+    .major-progress .progress-bar-inner{background:linear-gradient(90deg,#777,#aaa)}
+    .major-body{max-height:0;overflow:hidden;transition:max-height .4s ease}
+    .major-group.open>.major-body{max-height:50000px}
+    .major-body-inner{padding:8px 12px 12px}
+    .mid-group{margin-bottom:10px;border:1px solid #252525;border-radius:10px;overflow:hidden;background:rgba(136,136,136,.02)}
+    .mid-header{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;cursor:pointer;user-select:none;transition:background .15s}
+    .mid-header:hover{background:rgba(136,136,136,.05)}
+    .mid-header-left{display:flex;align-items:center;gap:10px}
+    .mid-arrow{font-size:11px;color:#777;transition:transform .25s;display:inline-block}
+    .mid-group.open>.mid-header .mid-arrow{transform:rotate(90deg)}
+    .mid-title{font-size:17px;font-weight:700;color:#a0a0a0;letter-spacing:1.5px}
+    .mid-count{font-size:12px;color:#666;font-weight:600}
+    .mid-progress{padding:0 18px 10px}
+    .mid-progress .progress-bar-outer{height:4px}
+    .mid-progress .progress-bar-inner{background:linear-gradient(90deg,#666,#888)}
+    .mid-body{max-height:0;overflow:hidden;transition:max-height .35s ease}
+    .mid-group.open>.mid-body{max-height:20000px}
+    .mid-body-inner{padding:4px 8px 8px}
+    .sub-group{margin-bottom:6px}
+    .subgrp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;cursor:pointer;user-select:none;padding:7px 10px;border-radius:8px;transition:background .15s}
+    .subgrp-header:hover{background:rgba(136,136,136,.05)}
+    .subgrp-header-left{display:flex;align-items:center;gap:10px}
+    .subgrp-arrow{font-size:10px;color:#777;transition:transform .25s;display:inline-block}
+    .sub-group.open>.subgrp-header .subgrp-arrow{transform:rotate(90deg)}
+    .subgrp-title{font-size:15px;font-weight:700;color:#999;letter-spacing:1px}
+    .subgrp-count{font-size:12px;color:#666}
+    .subgrp-progress{margin-bottom:4px;padding:0 10px}
+    .subgrp-progress .progress-bar-outer{height:3px}
+    .subgrp-progress .progress-bar-inner{background:linear-gradient(90deg,#666,#888)}
+    .subgrp-body{max-height:0;overflow:hidden;transition:max-height .35s ease}
+    .sub-group.open>.subgrp-body{max-height:5000px}
+    .subgrp-body-inner{padding:0 0 0 12px}
+    .category{margin-bottom:6px}
+    .cat-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;cursor:pointer;user-select:none;padding:7px 10px;border-radius:8px;transition:background .15s}
+    .cat-header:hover{background:rgba(136,136,136,.05)}
+    .cat-header-left{display:flex;align-items:center;gap:10px}
+    .cat-arrow{font-size:10px;color:#666;transition:transform .25s;display:inline-block}
+    .category.open>.cat-header .cat-arrow{transform:rotate(90deg)}
+    .cat-title{font-size:15px;font-weight:700;color:#999;letter-spacing:1px}
+    .cat-count{font-size:12px;color:#666}
+    .cat-progress{margin-bottom:4px;padding:0 10px}
+    .cat-progress .progress-bar-outer{height:3px}
+    .cat-progress .progress-bar-inner{background:linear-gradient(90deg,#666,#888)}
+    .cat-items{max-height:0;overflow:hidden;transition:max-height .35s ease}
+    .category.open>.cat-items{max-height:5000px}
+    .item-wrap{border-radius:8px;transition:background .15s}
+    .item-wrap:hover{background:rgba(136,136,136,.05)}
+    .item-row{display:flex;align-items:center;gap:10px;padding:10px 16px 10px 28px;cursor:pointer}
+    .item-row .cb{width:20px;height:20px;border:2px solid #444;border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .2s}
+    .item-wrap:hover .cb{border-color:#888}
+    .item-wrap.checked .cb{background:#888;border-color:#888}
+    .item-wrap.checked .cb::after{content:"\2713";color:#131313;font-size:13px;font-weight:700}
+    .item-wrap.checked .item-label{opacity:.35;text-decoration:line-through;text-decoration-color:#888}
+    .item-label{font-size:15px;transition:all .2s;flex:1;min-width:0;word-break:break-word}
+    .tag-priority{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;margin-left:8px;vertical-align:middle}
+    .tag-high{background:#3a2828;color:#c0a0a0}.tag-low{background:#28303a;color:#a0b0c0}
+    .tag-thisweek{background:#33331e;color:#c8b860}.tag-nextweek{background:#1e2833;color:#80b0d0}.tag-extra{background:#1e2030;color:#90b0e0}
+    .item-actions{display:flex;gap:4px;flex-shrink:0}
+    .act-btn{width:28px;height:28px;border:1px solid #333;border-radius:6px;background:transparent;color:#666;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;position:relative}
+    .act-btn:hover{background:#222;border-color:#888;color:#888}
+    .act-btn.wk-this{color:#8a8040}.act-btn.wk-this:hover,.act-btn.wk-this.active{border-color:#c8b860;color:#c8b860}
+    .act-btn.wk-next{color:#406080}.act-btn.wk-next:hover,.act-btn.wk-next.active{border-color:#80b0d0;color:#80b0d0}
+    .sort-dropdown{position:fixed;z-index:500;background:#1e1e1e;border:1px solid #333;border-radius:8px;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+    .sort-option{padding:10px 16px;font-size:13px;color:#c8c0b8;cursor:pointer;transition:background .15s}
+    .sort-option:hover{background:rgba(136,136,136,.08)}.sort-option.active{color:#e8e0d8;font-weight:600}
+    .item-note{padding:4px 28px 8px 62px;font-size:13px;color:#777;font-style:italic}
+    .act-detail-has{color:#ffd700!important;border-color:#ffd700!important}
+    .major-direct-items{padding:4px 12px 12px}
+    .major-direct-items .item-row{padding:10px 16px 10px 22px}
+    .major-direct-items .item-note{padding-left:56px}
+    .modal-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:24px}
+    .modal{background:#1e1e1e;border:1px solid #333;border-radius:14px;padding:28px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+    .modal.modal-lg{max-width:680px}.modal.modal-lg textarea{min-height:360px;font-size:15px;line-height:1.7}
+    .modal h3{font-size:16px;font-weight:700;color:#c8c0b8;margin-bottom:18px;letter-spacing:1px}
+    .modal input,.modal textarea{width:100%;padding:12px 14px;border:1px solid #333;border-radius:8px;background:#131313;color:#e8e0d8;font-size:15px;outline:none;font-family:inherit;transition:border-color .2s}
+    .modal input:focus,.modal textarea:focus{border-color:#888}
+    .modal textarea{resize:vertical;min-height:80px}
+    .modal-btns{display:flex;gap:10px;margin-top:18px;justify-content:flex-end}
+    .modal-btn{padding:10px 22px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s}
+    .modal-btn.cancel{background:#2a2a2a;color:#777}.modal-btn.cancel:hover{background:#333}
+    .modal-btn.confirm{background:#888;color:#131313}.modal-btn.confirm:hover{background:#999}
+    /* Weekly page */
+    .weekly-page{max-width:720px;margin:0 auto;padding:20px 24px}
+    .wk-section{margin-bottom:28px;border:1px solid #2a2a2a;border-radius:14px;overflow:hidden}
+    .wk-section.gold{border-color:#3a3a28;background:linear-gradient(135deg,#1e1e18,#1a1a16)}
+    .wk-section.blue{border-color:#28303a;background:linear-gradient(135deg,#181c22,#161a20)}
+    .wk-section-top{padding:16px 22px;display:flex;justify-content:space-between;align-items:center}
+    .gold .wk-section-top{background:rgba(200,184,96,.04);border-bottom:1px solid #33331e}
+    .blue .wk-section-top{background:rgba(128,176,208,.04);border-bottom:1px solid #1e2833}
+    .wk-section-title{font-size:20px;font-weight:800;letter-spacing:2px}
+    .gold .wk-section-title{color:#c8b860}.blue .wk-section-title{color:#80b0d0}
+    .wk-date{font-size:13px;font-weight:600}.gold .wk-date{color:#8a8060}.blue .wk-date{color:#607888}
+    .wk-countdown{padding:4px 22px 0;font-size:14px;font-weight:700;letter-spacing:.5px;font-variant-numeric:tabular-nums}
+    .gold .wk-countdown{color:#c8b860}.blue .wk-countdown{color:#80b0d0}
+    .wk-period{padding:2px 22px 0;font-size:12px;opacity:.6}
+    .gold .wk-period{color:#8a8060}.blue .wk-period{color:#607888}
+    .wk-progress{padding:12px 22px 16px}
+    .wk-progress-label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;font-weight:600}
+    .gold .wk-progress-label{color:#c8b860}.blue .wk-progress-label{color:#80b0d0}
+    .wk-progress .progress-bar-outer{height:10px}
+    .gold .progress-bar-inner{background:linear-gradient(90deg,#a09040,#c8b860)!important}
+    .blue .progress-bar-inner{background:linear-gradient(90deg,#5080a0,#80b0d0)!important}
+    .wk-items{padding:4px 10px 12px}
+    .wk-items .item-row{padding:10px 16px}
+    .wk-empty{text-align:center;padding:30px;opacity:.35;font-size:14px}
+    /* Extra progress - cold blue-white glow */
+    .wk-extra-label{padding:8px 22px 0;font-size:14px;font-weight:700;color:#90b8e0;letter-spacing:1px;display:flex;align-items:center;gap:8px}
+    .wk-extra-label::before{content:"\2726";font-size:12px}
+    .wk-extra-progress{padding:6px 22px 14px}
+    .wk-extra-progress .progress-bar-outer{height:8px;border-radius:6px;position:relative}
+    .wk-extra-progress .progress-bar-inner{background:linear-gradient(90deg,#5080c0,#80b0e0,#b0d0f0)!important;border-radius:6px;box-shadow:0 0 8px rgba(128,176,224,.25),0 0 16px rgba(128,176,224,.1)}
+    .wk-extra-progress .wk-progress-label{color:#90b8e0}
+    .wk-extra-divider{height:1px;background:rgba(128,176,224,.1);margin:4px 22px 0}
+    .wk-history-title{font-size:16px;font-weight:700;color:#888;letter-spacing:1px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #2a2a2a}
+    .history-week{margin-bottom:10px;border:1px solid #252525;border-radius:10px;overflow:hidden}
+    .history-week-header{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;cursor:pointer;user-select:none;transition:background .15s}
+    .history-week-header:hover{background:rgba(136,136,136,.04)}
+    .history-week-header-left{display:flex;align-items:center;gap:10px}
+    .history-arrow{font-size:10px;color:#666;transition:transform .25s;display:inline-block}
+    .history-week.open .history-arrow{transform:rotate(90deg)}
+    .history-week-label{font-size:14px;font-weight:600;color:#999}
+    .history-week-count{font-size:12px;color:#666}
+    .history-week-body{max-height:0;overflow:hidden;transition:max-height .3s ease}
+    .history-week.open .history-week-body{max-height:5000px}
+    .history-item{padding:8px 18px 8px 36px;font-size:14px;display:flex;gap:8px;align-items:center}
+    .hi-check{color:#80b080;font-size:13px}.hi-miss{color:#b08080;font-size:13px}
+    .hi-name{flex:1}.hi-cat{font-size:11px;color:#666}
+    ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+    /* Add List button */
+    .add-list-bar{max-width:720px;margin:0 auto;padding:0 24px 8px}
+    .add-list-btn{width:100%;padding:12px;border:1px dashed #444;border-radius:10px;background:transparent;color:#888;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:1px}
+    .add-list-btn:hover{background:rgba(136,136,136,.05);border-color:#888}
+    .modal select{width:100%;padding:12px 14px;border:1px solid #333;border-radius:8px;background:#131313;color:#e8e0d8;font-size:15px;outline:none;font-family:inherit;margin-bottom:12px;transition:border-color .2s;-webkit-appearance:none;appearance:none}
+    .modal select:focus{border-color:#888}
+    .modal select option{background:#131313;color:#e8e0d8}
+    .modal .form-label{font-size:13px;color:#777;margin-bottom:6px;display:block;font-weight:600}
+    .modal .form-group{margin-bottom:14px}
+    .modal .inline-input{display:none;margin-top:8px}
+    .modal .inline-input.show{display:block}
+    @media(max-width:768px){.modal{max-height:90vh;overflow-y:auto}.modal.modal-lg{max-width:95vw;padding:20px}.modal.modal-lg textarea{min-height:260px}}
+    @media(max-width:480px){header{padding:20px 16px 0}.logo{font-size:26px}.container{padding:12px}.major-header{padding:14px 16px}.major-title{font-size:17px}.major-progress{padding:0 16px 10px}.major-body-inner{padding:4px 4px 8px}.mid-header{padding:10px 12px}.mid-title{font-size:15px}.item-row{padding:10px 8px 10px 16px;gap:6px}.act-btn{width:32px;height:32px;font-size:13px;min-width:32px}.item-actions{gap:3px;flex-wrap:wrap}.view-btn{font-size:13px;padding:10px 0}.modal{padding:20px;margin:12px}.modal-overlay{padding:12px}.wk-section-title{font-size:17px}.sort-dropdown{min-width:140px}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo">Bar<span>Wish</span></div>
+  <div class="subtitle">Checklist</div>
+  <div class="view-toggle">
+    <div class="view-btn active" data-view="main">Main</div>
+    <div class="view-btn" data-view="priority">優先順序</div>
+    <div class="view-btn" data-view="weekly">每週任務</div>
+  </div>
+</header>
+<div id="mainContent">
+  <div class="total-progress">
+    <div class="total-progress-label"><span>總進度</span><span id="totalText">0 / 0</span></div>
+    <div class="progress-bar-outer"><div class="progress-bar-inner" id="totalBar" style="width:0%"></div></div>
+  </div>
+  <div class="add-list-bar" id="addListBar"><button class="add-list-btn" id="addListBtn">＋ 新增 List</button></div>
+  <div class="priority-bar" id="priorityBar" style="display:none"></div>
+  <div class="container" id="app"></div>
+</div>
+<div id="weeklyContent" style="display:none"></div>
+<div class="modal-overlay" id="modalOverlay" style="display:none"><div class="modal" id="modalBox"></div></div>
+
+<script>
+const GROUPS=[{major:"主產品",type:"nested",mids:[{mid:"酒類",entries:[{type:"sub",cat:"新酒單",items:["梔子花白茶","碧螺春","凍頂馬丁尼","手標茶","文山莓果","東方黑夜","萬華冰茶"]},{type:"sub",cat:"欲室經典",items:["養肝茶","百草","剝皮","龍山寺","金萱","鐵觀音","米糕粥","愛玉冰","青雲閣","醉花園","和泉樓"]},{type:"group",name:"單支品項",subs:[{cat:"單支品項－Tequila",items:["donjulio","patron","pueblo anejo","pueblo repasado"]},{cat:"單支品項－Mezcal",items:["科特雅","nuku"]},{cat:"單支品項－Rum",items:["silvery","abuelo"]},{cat:"單支品項－Whisky",items:["jd","michers","虎尾釀","櫻偉","美格","小山貓","阿貝","格蘭高尼","Jameson","bush mill","穆赫","麥卡倫"]}]},{type:"group",name:"經典調酒",subs:[{cat:"經典調酒－Tequila",items:["oaxaca old fashion","magarita","el diablo","paloma"]},{cat:"經典調酒－Brandy",items:["side car","brandy cresta","sazerac"]},{cat:"經典調酒－Whisky",items:["pencillin","old fashion","vieix carre","toronto","boulenardier","manhatan"]},{cat:"經典調酒－Rum",items:["daiquiri","hemingway daiquiri","pina colada","mojito"]},{cat:"經典調酒－Vodka",items:["Cosmopolitan","sex on the beach","pornstar martini","vesper martini"]},{cat:"經典調酒－Gin",items:["martini","white lady","negroni","ginger mule","aviation","jasmine"]}]}]},{mid:"無酒精",subs:[{cat:"無酒精",items:["氣泡冬瓜","氣泡楊桃","咖啡抹茶拿鐵"]}]},{mid:"餐食",subs:[{cat:"餐點－麵食",items:["皮蛋剁椒麵","油潑福州麵"]},{cat:"餐點－可頌",items:["牛肉洋蔥固定","蔥醬","辣豆瓣"]},{cat:"餐點－刈包",items:["台墨辣椒醬","豬肉","明太子","牛肉"]},{cat:"餐點－主食",items:["炸雞","排骨酥"]},{cat:"附餐",items:["薯條","玉米筍","豆腐","雞肝吐司"]},{cat:"甜點",items:["蜜釀水果","聖代"]},{cat:"下酒菜",items:["牛腱","芥末章魚"]}]}]},{major:"軟硬體含周邊",type:"flat",subs:[{cat:"杯具餐盤",items:["石紋黑盤","石紋白盤","石紋小黑盤","小黑盤","棕色長盤","黑色長盤","麵碗","小碗","橢圓形長盤","黑色醬料碟","白色醬料碟","聖代杯","圓盤"]},{cat:"軟裝硬體－外部",items:["盆栽盆","桌椅","煙灰缸","立招","燈箱","led燈條","吊掛式標語","傘架"]},{cat:"軟裝硬體－內部",items:["T1 牆面海報牆 加上蠟淚效果","T3 牆面雜誌報紙的大牆","S1 牆面加上玻璃成為燈箱","S2 牆面大的噴漆 上帝之手","裝置藝術區許願樹","中間長桌裡面的效果 用真蠟燭先燒自然融在透明的漆上面","透明的椅子","菜單"]}]},{major:"行銷策略",type:"flat",subs:[{cat:"品牌視覺識別",items:["品牌核心確認","色彩系統確認","標準字策略確認","logo識別系統"]},{cat:"會員戰略",items:["The WISH Society 體系建立","入會信物製作（VIP金屬打火機項鍊）","訂閱制度設定","前期名單建立"]},{cat:"社群與活動",items:["Instagram 九宮格規劃","Threads 人設建立","Line OA 設定","Google Maps 關鍵字優化","慾室告解室 常態活動規劃","The Sealed Night 開幕夜規劃"]}]},{major:"廠商",type:"direct",cat:"廠商",items:["尚德","振興","酒田","揪酒","岩誠","敏潔","何仙姑"]}];
+
+const K={checked:'barwish_checked',collapse:'barwish_open',midC:'barwish_mid_open',majorC:'barwish_major_open',subgrpC:'barwish_subgrp_open',priority:'barwish_priority',rename:'barwish_rename',note:'barwish_note',detail:'barwish_detail',thisWeek:'barwish_wk_this',nextWeek:'barwish_wk_next',wkExtra:'barwish_wk_extra',wkHistory:'barwish_wk_history',wkSavedWeek:'barwish_wk_saved',userItems:'barwish_user_items'};
+
+let currentView='main';
+let serverNow=null; // will be set by API
+let serverFetchedAt=0; // performance.now() when fetched
+let countdownTimer=null;
+const DAYS=['日','一','二','三','四','五','六'];
+
+function ld(k){try{return JSON.parse(localStorage.getItem(k))||{}}catch{return{}}}
+function sv(k,v){localStorage.setItem(k,JSON.stringify(v))}
+function ldA(k){try{return JSON.parse(localStorage.getItem(k))||[]}catch{return[]}}
+function mid(c,i){return c+'::'+i}
+function dn(id,orig){return ld(K.rename)[id]||orig}
+
+function cntSubs(subs,st){let c=0,t=0;subs.forEach(s=>s.items.forEach(i=>{t++;if(st[mid(s.cat,i)])c++}));return{checked:c,total:t}}
+function cntEntries(entries,st){let c=0,t=0;entries.forEach(e=>{if(e.type==='sub')e.items.forEach(i=>{t++;if(st[mid(e.cat,i)])c++});else if(e.type==='group'){const r=cntSubs(e.subs,st);c+=r.checked;t+=r.total}});return{checked:c,total:t}}
+function colSubs(subs,out){subs.forEach(s=>s.items.forEach(i=>out.push({cat:s.cat,item:i,id:mid(s.cat,i)})))}
+
+// Merge user-added items into GROUPS
+function getMergedGroups(){
+  const ui=ldA(K.userItems);
+  // Deep clone GROUPS
+  const g=JSON.parse(JSON.stringify(GROUPS));
+  ui.forEach(item=>{
+    let majorG=g.find(x=>x.major===item.major);
+    if(!majorG){
+      if(item.cat){majorG={major:item.major,type:'flat',subs:[]};g.push(majorG)}
+      else{majorG={major:item.major,type:'direct',cat:item.major,items:[]};g.push(majorG)}
+    }
+    if(majorG.type==='direct'){
+      if(!majorG.items.includes(item.name))majorG.items.push(item.name);return
+    }
+    if(!item.mid){
+      // flat type, add to subs
+      if(majorG.type==='flat'||!majorG.mids){
+        if(!majorG.subs)majorG.subs=[];
+        let sub=majorG.subs.find(s=>s.cat===item.cat);
+        if(!sub){sub={cat:item.cat,items:[]};majorG.subs.push(sub)}
+        if(!sub.items.includes(item.name))sub.items.push(item.name)
+      }
+      return
+    }
+    // nested type
+    if(majorG.type!=='nested'){majorG.type='nested';majorG.mids=majorG.mids||[]}
+    let midG=majorG.mids.find(m=>m.mid===item.mid);
+    if(!midG){midG={mid:item.mid,subs:[]};majorG.mids.push(midG)}
+    if(midG.entries){
+      // Find in entries
+      let found=false;
+      midG.entries.forEach(e=>{
+        if(e.type==='sub'&&e.cat===item.cat){if(!e.items.includes(item.name))e.items.push(item.name);found=true}
+        else if(e.type==='group'){const s=e.subs.find(s=>s.cat===item.cat);if(s){if(!s.items.includes(item.name))s.items.push(item.name);found=true}}
+      });
+      if(!found){
+        midG.entries.push({type:'sub',cat:item.cat,items:[item.name]})
+      }
+    }else{
+      let sub=(midG.subs||[]).find(s=>s.cat===item.cat);
+      if(!sub){sub={cat:item.cat,items:[]};if(!midG.subs)midG.subs=[];midG.subs.push(sub)}
+      if(!sub.items.includes(item.name))sub.items.push(item.name)
+    }
+  });
+  return g
+}
+
+// Override allItems to use merged data
+function allItemsMerged(){
+  const o=[],groups=getMergedGroups();
+  groups.forEach(g=>{if(g.type==='nested')g.mids.forEach(m=>{if(m.entries)m.entries.forEach(e=>{if(e.type==='sub')colSubs([e],o);else if(e.type==='group')colSubs(e.subs,o)});else colSubs(m.subs||[],o)});else if(g.type==='flat')(g.subs||[]).forEach(s=>s.items.forEach(i=>o.push({cat:s.cat,item:i,id:mid(s.cat,i)})));else if(g.type==='direct')(g.items||[]).forEach(i=>o.push({cat:g.cat,item:i,id:mid(g.cat,i)}))});
+  return o
+}
+
+// Build structure info for add modal
+function getStructureForAdd(){
+  const groups=getMergedGroups();
+  return groups.map(g=>{
+    const info={major:g.major,type:g.type};
+    if(g.type==='nested'){
+      info.mids=g.mids.map(m=>{
+        const cats=new Set();
+        if(m.entries)m.entries.forEach(e=>{if(e.type==='sub')cats.add(e.cat);else if(e.type==='group')e.subs.forEach(s=>cats.add(s.cat))});
+        else if(m.subs)m.subs.forEach(s=>cats.add(s.cat));
+        return{mid:m.mid,cats:[...cats]}
+      })
+    }else if(g.type==='flat'){
+      info.cats=(g.subs||[]).map(s=>s.cat)
+    }
+    return info
+  })
+}
+
+function showAddListModal(){
+  const ov=document.getElementById('modalOverlay'),bx=document.getElementById('modalBox');
+  bx.className='modal';
+  const struct=getStructureForAdd();
+  const majorOpts=struct.map(s=>`<option value="${ea(s.major)}">${eh(s.major)}</option>`).join('');
+
+  bx.innerHTML=`<h3>新增 List</h3>
+    <div class="form-group"><label class="form-label">名稱</label><input type="text" id="addName" placeholder="輸入項目名稱" /></div>
+    <div class="form-group"><label class="form-label">大分類</label>
+      <select id="addMajor"><option value="">-- 選擇大分類 --</option>${majorOpts}<option value="__new">＋ 新增大分類</option></select>
+      <input type="text" class="inline-input" id="addMajorNew" placeholder="輸入新大分類名稱" />
+    </div>
+    <div class="form-group" id="addMidGroup" style="display:none"><label class="form-label">中分類</label>
+      <select id="addMid"><option value="">-- 選擇中分類 --</option></select>
+      <input type="text" class="inline-input" id="addMidNew" placeholder="輸入新中分類名稱" />
+    </div>
+    <div class="form-group" id="addCatGroup" style="display:none"><label class="form-label">細項分類</label>
+      <select id="addCat"><option value="">-- 選擇細項分類 --</option></select>
+      <input type="text" class="inline-input" id="addCatNew" placeholder="輸入新細項分類名稱" />
+    </div>
+    <div class="modal-btns"><button class="modal-btn cancel" id="addCancel">取消</button><button class="modal-btn confirm" id="addConfirm">確認新增</button></div>`;
+  ov.style.display='flex';
+
+  const majorSel=document.getElementById('addMajor'),midGroup=document.getElementById('addMidGroup'),midSel=document.getElementById('addMid'),catGroup=document.getElementById('addCatGroup'),catSel=document.getElementById('addCat');
+  const majorNew=document.getElementById('addMajorNew'),midNew=document.getElementById('addMidNew'),catNew=document.getElementById('addCatNew');
+
+  majorSel.onchange=()=>{
+    const v=majorSel.value;
+    majorNew.className='inline-input'+(v==='__new'?' show':'');
+    midGroup.style.display='none';catGroup.style.display='none';
+    if(v&&v!=='__new'){
+      const s=struct.find(x=>x.major===v);
+      if(s&&s.type==='nested'&&s.mids){
+        midSel.innerHTML='<option value="">-- 選擇中分類 --</option>'+s.mids.map(m=>`<option value="${ea(m.mid)}">${eh(m.mid)}</option>`).join('')+'<option value="__new">＋ 新增中分類</option>';
+        midGroup.style.display='block';midNew.className='inline-input';
+      }else if(s&&s.type==='flat'&&s.cats){
+        catSel.innerHTML='<option value="">-- 選擇細項分類 --</option>'+s.cats.map(c=>`<option value="${ea(c)}">${eh(c)}</option>`).join('')+'<option value="__new">＋ 新增細項分類</option>';
+        catGroup.style.display='block';catNew.className='inline-input';
+      }
+    }
+  };
+
+  midSel.onchange=()=>{
+    const mv=majorSel.value,miv=midSel.value;
+    midNew.className='inline-input'+(miv==='__new'?' show':'');
+    catGroup.style.display='none';
+    if(miv&&miv!=='__new'){
+      const s=struct.find(x=>x.major===mv);
+      if(s&&s.mids){
+        const m=s.mids.find(x=>x.mid===miv);
+        if(m&&m.cats.length>0){
+          catSel.innerHTML='<option value="">-- 選擇細項分類 --</option>'+m.cats.map(c=>`<option value="${ea(c)}">${eh(c)}</option>`).join('')+'<option value="__new">＋ 新增細項分類</option>';
+          catGroup.style.display='block';catNew.className='inline-input';
+        }
+      }
+    }
+  };
+
+  catSel.onchange=()=>{catNew.className='inline-input'+(catSel.value==='__new'?' show':'')};
+
+  document.getElementById('addCancel').onclick=hideModal;
+  ov.onclick=e=>{if(e.target===ov)hideModal()};
+
+  document.getElementById('addConfirm').onclick=()=>{
+    const name=document.getElementById('addName').value.trim();
+    if(!name)return;
+    let major=majorSel.value==='__new'?majorNew.value.trim():majorSel.value;
+    if(!major)return;
+    let midVal=null,catVal=null;
+    if(midGroup.style.display!=='none'){
+      midVal=midSel.value==='__new'?midNew.value.trim():midSel.value;
+      if(midSel.value==='__new'&&!midVal)return;
+    }
+    if(catGroup.style.display!=='none'){
+      catVal=catSel.value==='__new'?catNew.value.trim():catSel.value;
+      if(catSel.value==='__new'&&!catVal)return;
+    }
+    // For flat majors without mid, cat is the category
+    // For direct majors, no cat needed
+    const entry={name,major};
+    if(midVal)entry.mid=midVal;
+    if(catVal)entry.cat=catVal;
+    else if(!midVal&&majorSel.value!=='__new'){
+      const s=struct.find(x=>x.major===major);
+      if(s&&s.type==='direct')entry.cat=major;
+      else if(!catVal)entry.cat=major; // fallback
+    }
+    if(!entry.cat&&!midVal)entry.cat=major;
+    if(!entry.cat&&midVal)entry.cat=midVal;
+
+    const items=ldA(K.userItems);
+    items.push(entry);
+    sv(K.userItems,items);
+    hideModal();
+    render()
+  };
+
+  document.getElementById('addName').focus()
+}
+
+// Get current Taipei time (from API or synced)
+function getNow(){
+  if(serverNow){const elapsed=performance.now()-serverFetchedAt;return new Date(serverNow.getTime()+elapsed)}
+  return new Date() // fallback
+}
+
+// Fetch Taipei time from API
+async function fetchTaipeiTime(){
+  const apis=['https://worldtimeapi.org/api/timezone/Asia/Taipei','https://timeapi.io/api/time/current/zone?timeZone=Asia/Taipei'];
+  for(const url of apis){
+    try{
+      const r=await fetch(url,{signal:AbortSignal.timeout(5000)});
+      const j=await r.json();
+      let dt;
+      if(j.datetime)dt=new Date(j.datetime); // worldtimeapi
+      else if(j.dateTime)dt=new Date(j.dateTime+'+08:00'); // timeapi.io
+      if(dt&&!isNaN(dt)){serverNow=dt;serverFetchedAt=performance.now();return}
+    }catch{}
+  }
+}
+
+// Week cycle: Tue 00:00 ~ next Mon 23:59
+function getWeekTue(d){
+  const dt=new Date(d);dt.setHours(0,0,0,0);
+  const day=dt.getDay(); // 0=Sun
+  // Tue=2. Find the most recent Tuesday
+  let diff=day-2;
+  if(diff<0)diff+=7;
+  dt.setDate(dt.getDate()-diff);
+  return dt
+}
+function getWeekEndMon(tue){const m=new Date(tue);m.setDate(m.getDate()+6);m.setHours(23,59,59,999);return m}
+function getNextWeekTue(tue){const n=new Date(tue);n.setDate(n.getDate()+7);return n}
+function fmtD(d){return d.getFullYear()+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getDate().toString().padStart(2,'0')}
+function fmtDW(d){return fmtD(d)+'（'+DAYS[d.getDay()]+'）'}
+function curWeekKey(){return fmtD(getWeekTue(getNow()))}
+
+function isAfterThursday(){
+  const now=getNow(),tue=getWeekTue(now);
+  const thu=new Date(tue);thu.setDate(thu.getDate()+2);thu.setHours(0,0,0,0); // Thu 00:00
+  return now>=thu
+}
+function markExtraIfNeeded(id){
+  if(isAfterThursday()){const ex=ld(K.wkExtra);ex[id]=true;sv(K.wkExtra,ex)}
+}
+
+function fmtCountdown(ms){
+  if(ms<=0)return '已到期';
+  const s=Math.floor(ms/1000),m=Math.floor(s/60),h=Math.floor(m/60),d=Math.floor(h/24);
+  return `${d}天 ${h%24}時 ${m%60}分 ${s%60}秒`
+}
+
+function settleWeek(){
+  const cur=curWeekKey(),saved=localStorage.getItem(K.wkSavedWeek);
+  if(saved&&saved!==cur){
+    const tw=ld(K.thisWeek),done=ld(K.checked),nw=ld(K.nextWeek),extra=ld(K.wkExtra),hist=ldA(K.wkHistory);
+    const ids=Object.keys(tw).filter(k=>tw[k]);
+    const mainIds=ids.filter(id=>!extra[id]),extraIds=ids.filter(id=>extra[id]);
+    if(ids.length>0){
+      const rec={week:saved,items:mainIds.map(id=>({id,cat:id.split('::')[0],item:dn(id,id.split('::').slice(1).join('::')),done:!!done[id]}))};
+      if(extraIds.length>0)rec.extra=extraIds.map(id=>({id,cat:id.split('::')[0],item:dn(id,id.split('::').slice(1).join('::')),done:!!done[id]}));
+      hist.unshift(rec);sv(K.wkHistory,hist);
+    }
+    const newTw={};
+    ids.forEach(id=>{if(!done[id])newTw[id]=true});
+    Object.keys(nw).filter(k=>nw[k]).forEach(id=>{newTw[id]=true});
+    sv(K.thisWeek,newTw);sv(K.nextWeek,{});sv(K.wkExtra,{});
+  }
+  localStorage.setItem(K.wkSavedWeek,cur);
+}
+
+function itemHtml(id,orig,state,showSrc){
+  const chk=!!state[id],pri=ld(K.priority),notes=ld(K.note),details=ld(K.detail),tw=ld(K.thisWeek),nw=ld(K.nextWeek),extra=ld(K.wkExtra);
+  const name=dn(id,orig),p=pri[id],note=notes[id],detail=details[id],isTw=!!tw[id],isNw=!!nw[id],isExtra=!!extra[id];
+  let tags='';
+  if(p==='high')tags+='<span class="tag-priority tag-high">優先</span>';
+  else if(p==='low')tags+='<span class="tag-priority tag-low">次要</span>';
+  if(isTw&&isExtra)tags+='<span class="tag-priority tag-extra">✦Extra</span>';
+  else if(isTw)tags+='<span class="tag-priority tag-thisweek">⭐本週</span>';
+  if(isNw)tags+='<span class="tag-priority tag-nextweek">🔵下週</span>';
+  let src='';if(showSrc)src=`<span class="pri-source">${eh(id.split('::')[0])}</span>`;
+  let noteH='';if(note)noteH=`<div class="item-note">${eh(note)}</div>`;
+  const detActive=detail?' act-detail-has':'';
+  let wkBtns='';
+  if(currentView==='priority'){
+    wkBtns=`<button class="act-btn wk-this ${isTw?'active':''}" data-id="${ea(id)}" data-wk="this" title="本週任務">⭐</button><button class="act-btn wk-next ${isNw?'active':''}" data-id="${ea(id)}" data-wk="next" title="下週任務">🔵</button>`;
+  }
+  return `<div class="item-wrap ${chk?'checked':''}" data-id="${ea(id)}"><div class="item-row"><div class="cb"></div><span class="item-label">${eh(name)}${tags}${src}</span><div class="item-actions">${wkBtns}<button class="act-btn btn-sort" data-id="${ea(id)}" title="排序">&#9733;</button><button class="act-btn btn-edit" data-id="${ea(id)}" data-original="${ea(orig)}" title="修改">&#9998;</button><button class="act-btn btn-note" data-id="${ea(id)}" title="備註">&#9998;&#xFE0E;</button><button class="act-btn btn-detail${detActive}" data-id="${ea(id)}" data-original="${ea(orig)}" title="詳文">&#9776;</button></div></div>${noteH}</div>`
+}
+
+function wkItemHtml(id,orig,doneMap,type){
+  const name=dn(id,orig),isDone=!!doneMap[id],notes=ld(K.note),note=notes[id];
+  let noteH='';if(note)noteH=`<div class="item-note">${eh(note)}</div>`;
+  const removeKey=type==='this'?K.thisWeek:K.nextWeek;
+  let moveBtn='';
+  if(type==='this')moveBtn=`<button class="act-btn wk-next btn-wk-move-next" data-id="${ea(id)}" title="移至下週">🔵</button>`;
+  if(type==='next')moveBtn=`<button class="act-btn wk-this btn-wk-move-this" data-id="${ea(id)}" title="移至本週">⭐</button>`;
+  const cat=id.split('::')[0];
+  return `<div class="item-wrap ${isDone?'checked':''}" data-id="${ea(id)}" data-wktype="${type}"><div class="item-row"><div class="cb"></div><span class="item-label">${eh(name)}－<span class="pri-source">${eh(cat)}</span></span><div class="item-actions">${moveBtn}<button class="act-btn btn-wk-remove" data-id="${ea(id)}" data-wkkey="${ea(removeKey)}" title="移除" style="color:#c06060">✕</button></div></div>${noteH}</div>`
+}
+
+function renderSubs(subs,state,ex){let h='';subs.forEach(sub=>{const fi=ex?sub.items.filter(i=>!ex.has(mid(sub.cat,i))):sub.items;if(ex&&fi.length===0)return;const ai=sub.items,c=ai.filter(i=>state[mid(sub.cat,i)]).length,t=ai.length,p=t?Math.round(c/t*100):0;h+=`<div class="category" data-cat="${ea(sub.cat)}"><div class="cat-header"><div class="cat-header-left"><span class="cat-arrow">&#9654;</span><span class="cat-title">${eh(sub.cat)}</span></div><span class="cat-count">${c} / ${t}</span></div><div class="cat-progress"><div class="progress-bar-outer"><div class="progress-bar-inner" style="width:${p}%"></div></div></div><div class="cat-items">`;fi.forEach(i=>{h+=itemHtml(mid(sub.cat,i),i,state)});h+='</div></div>'});return h}
+function renderEntries(entries,state,ex){let h='';entries.forEach(e=>{if(e.type==='sub'){h+=renderSubs([e],state,ex)}else if(e.type==='group'){const c=cntSubs(e.subs,state),p=c.total?Math.round(c.checked/c.total*100):0,inner=renderSubs(e.subs,state,ex);if(ex&&!inner)return;h+=`<div class="sub-group" data-subgrp="${ea(e.name)}"><div class="subgrp-header"><div class="subgrp-header-left"><span class="subgrp-arrow">&#9654;</span><span class="subgrp-title">${eh(e.name)}</span></div><span class="subgrp-count">${c.checked} / ${c.total}</span></div><div class="subgrp-progress"><div class="progress-bar-outer"><div class="progress-bar-inner" style="width:${p}%"></div></div></div><div class="subgrp-body"><div class="subgrp-body-inner">${inner}</div></div></div>`}});return h}
+function renderDirect(cat,items,state,ex){const fi=ex?items.filter(i=>!ex.has(mid(cat,i))):items;if(!fi.length)return'';let h='<div class="major-direct-items">';fi.forEach(i=>{h+=itemHtml(mid(cat,i),i,state)});return h+'</div>'}
+
+function closeDd(){document.querySelectorAll('.sort-dropdown').forEach(d=>d.remove())}
+function hideModal(){document.getElementById('modalOverlay').style.display='none';document.getElementById('modalBox').className='modal'}
+function showModal(title,html,onOk){const ov=document.getElementById('modalOverlay'),bx=document.getElementById('modalBox');bx.className='modal';bx.innerHTML=`<h3>${eh(title)}</h3>${html}<div class="modal-btns"><button class="modal-btn cancel" id="modalCancel">取消</button><button class="modal-btn confirm" id="modalConfirm">確認</button></div>`;ov.style.display='flex';document.getElementById('modalCancel').onclick=hideModal;ov.onclick=e=>{if(e.target===ov)hideModal()};document.getElementById('modalConfirm').onclick=()=>{onOk();hideModal()};const fi=bx.querySelector('input,textarea');if(fi)fi.focus()}
+function showDetailModal(id,name,cur){const ov=document.getElementById('modalOverlay'),bx=document.getElementById('modalBox');bx.className='modal modal-lg';bx.innerHTML=`<h3>詳文 — ${eh(name)}</h3><textarea id="detailInput" placeholder="輸入詳細說明...">${eh(cur)}</textarea><div class="modal-btns"><button class="modal-btn cancel" id="detailUndo" style="margin-right:auto">上一步</button><button class="modal-btn cancel" id="detailRedo">下一步</button><button class="modal-btn cancel" id="detailCancel">取消</button><button class="modal-btn confirm" id="detailConfirm">確認</button></div>`;ov.style.display='flex';const ta=document.getElementById('detailInput');const sn=[cur];let ptr=0,tmr=null,nav=false;function push(){clearTimeout(tmr);tmr=null;const v=ta.value;if(v===sn[ptr])return;sn.splice(ptr+1);sn.push(v);ptr=sn.length-1}ta.addEventListener('input',()=>{if(nav)return;clearTimeout(tmr);tmr=setTimeout(push,500)});document.getElementById('detailUndo').onclick=()=>{if(tmr)push();if(ptr>0){ptr--;nav=true;ta.value=sn[ptr];nav=false}};document.getElementById('detailRedo').onclick=()=>{if(ptr<sn.length-1){ptr++;nav=true;ta.value=sn[ptr];nav=false}};document.getElementById('detailCancel').onclick=hideModal;ov.onclick=e=>{if(e.target===ov)hideModal()};document.getElementById('detailConfirm').onclick=()=>{const v=ta.value.trim(),d=ld(K.detail);if(v)d[id]=v;else delete d[id];sv(K.detail,d);hideModal();render()};ta.focus()}
+
+function render(){
+  settleWeek();
+  const isW=currentView==='weekly';
+  document.getElementById('mainContent').style.display=isW?'none':'block';
+  document.getElementById('weeklyContent').style.display=isW?'block':'none';
+  const addBar0=document.getElementById('addListBar');
+  if(addBar0)addBar0.style.display=isW?'none':'block';
+  if(isW){renderWeekly();return}
+  const state=ld(K.checked),pri=ld(K.priority),app=document.getElementById('app'),pb=document.getElementById('priorityBar'),isP=currentView==='priority';
+  const pIds=new Set(),ex=isP?pIds:null;
+  if(isP)allItemsMerged().forEach(a=>{if(pri[a.id])pIds.add(a.id)});
+  if(isP){const all=allItemsMerged(),hi=all.filter(a=>pri[a.id]==='high'),lo=all.filter(a=>pri[a.id]==='low');if(hi.length||lo.length){let bh='<div class="priority-bar-inner"><div class="priority-bar-header">優先順序</div><div class="priority-bar-body">';if(hi.length){bh+='<div class="pri-level-title pri-level-high">優先</div>';hi.forEach(a=>{bh+=itemHtml(a.id,a.item,state,true)})}if(hi.length&&lo.length)bh+='<div class="pri-level-divider"></div>';if(lo.length){bh+='<div class="pri-level-title pri-level-low">次要</div>';lo.forEach(a=>{bh+=itemHtml(a.id,a.item,state,true)})}bh+='</div></div>';pb.innerHTML=bh;pb.style.display='block'}else{pb.innerHTML='<div class="priority-bar-inner"><div class="priority-bar-header">優先順序</div><div class="priority-empty-msg">尚未設定任何優先順序</div></div>';pb.style.display='block'}}else{pb.style.display='none';pb.innerHTML=''}
+  let tc=0,ti=0,html='';
+  if(addBar0)addBar0.style.display=isP?'none':'block';
+  getMergedGroups().forEach(g=>{let mc=0,mt=0,bh='';if(g.type==='nested'){g.mids.forEach(m=>{let c,content;if(m.entries){c=cntEntries(m.entries,state);content=renderEntries(m.entries,state,ex)}else{c=cntSubs(m.subs,state);content=renderSubs(m.subs,state,ex)}mc+=c.checked;mt+=c.total;const mp=c.total?Math.round(c.checked/c.total*100):0;bh+=`<div class="mid-group" data-mid="${ea(m.mid)}"><div class="mid-header"><div class="mid-header-left"><span class="mid-arrow">&#9654;</span><span class="mid-title">${eh(m.mid)}</span></div><span class="mid-count">${c.checked} / ${c.total}</span></div><div class="mid-progress"><div class="progress-bar-outer"><div class="progress-bar-inner" style="width:${mp}%"></div></div></div><div class="mid-body"><div class="mid-body-inner">${content}</div></div></div>`})}else if(g.type==='flat'){const c=cntSubs(g.subs,state);mc=c.checked;mt=c.total;bh=renderSubs(g.subs,state,ex)}else if(g.type==='direct'){g.items.forEach(i=>{mt++;if(state[mid(g.cat,i)])mc++});bh=renderDirect(g.cat,g.items,state,ex)}tc+=mc;ti+=mt;const mp=mt?Math.round(mc/mt*100):0;html+=`<div class="major-group" data-major="${ea(g.major)}"><div class="major-header"><div class="major-header-left"><span class="major-arrow">&#9654;</span><span class="major-title">${eh(g.major)}</span></div><span class="major-count">${mc} / ${mt}</span></div><div class="major-progress"><div class="progress-bar-outer"><div class="progress-bar-inner" style="width:${mp}%"></div></div></div><div class="major-body"><div class="major-body-inner">${bh}</div></div></div>`});
+  app.innerHTML=html;document.getElementById('totalText').textContent=`${tc} / ${ti}`;document.getElementById('totalBar').style.width=(ti?Math.round(tc/ti*100):0)+'%';
+  ldA(K.majorC).forEach(n=>{const e=app.querySelector(`[data-major="${CSS.escape(n)}"]`);if(e)e.classList.add('open')});
+  ldA(K.midC).forEach(n=>{const e=app.querySelector(`[data-mid="${CSS.escape(n)}"]`);if(e)e.classList.add('open')});
+  ldA(K.subgrpC).forEach(n=>{const e=app.querySelector(`[data-subgrp="${CSS.escape(n)}"]`);if(e)e.classList.add('open')});
+  ldA(K.collapse).forEach(n=>{const e=app.querySelector(`[data-cat="${CSS.escape(n)}"]`);if(e)e.classList.add('open')});
+  bindAll(document);
+  const abtn=document.getElementById('addListBtn');
+  if(abtn)abtn.onclick=()=>showAddListModal()
+}
+
+function renderWeekly(){
+  if(countdownTimer){clearInterval(countdownTimer);countdownTimer=null}
+  const tw=ld(K.thisWeek),nw=ld(K.nextWeek),done=ld(K.checked),extra=ld(K.wkExtra),all=allItemsMerged();
+  const twAll=all.filter(a=>tw[a.id]);
+  const twMainItems=twAll.filter(a=>!extra[a.id]),twExtraItems=twAll.filter(a=>extra[a.id]);
+  const nwItems=all.filter(a=>nw[a.id]);
+  const now=getNow();
+  const thisTue=getWeekTue(now),thisMon=getWeekEndMon(thisTue);
+  const nextTue=getNextWeekTue(thisTue),nextMon=getWeekEndMon(nextTue);
+  const mainDone=twMainItems.filter(a=>done[a.id]).length,mainTotal=twMainItems.length,mainPct=mainTotal?Math.round(mainDone/mainTotal*100):0;
+  const exDone=twExtraItems.filter(a=>done[a.id]).length,exTotal=twExtraItems.length,exPct=exTotal?Math.round(exDone/exTotal*100):0;
+  const nwDone=nwItems.filter(a=>done[a.id]).length,nwTotal=nwItems.length,nwPct=nwTotal?Math.round(nwDone/nwTotal*100):0;
+
+  let h=`<div class="weekly-page">
+    <div class="wk-section gold">
+      <div class="wk-section-top"><span class="wk-section-title">⭐ 本週任務</span></div>
+      <div class="wk-period">執行期間：${fmtDW(thisTue)} ~ ${fmtDW(thisMon)}</div>
+      <div class="wk-countdown" id="twCountdown">距截止還有 ...</div>
+      <div class="wk-progress"><div class="wk-progress-label"><span>本週進度</span><span>${mainDone} / ${mainTotal}</span></div><div class="progress-bar-outer"><div class="progress-bar-inner" style="width:${mainPct}%"></div></div></div>`;
+  if(exTotal>0){
+    h+=`<div class="wk-extra-divider"></div><div class="wk-extra-label">Extra</div>
+      <div class="wk-extra-progress"><div class="wk-progress-label"><span>Extra 進度</span><span>${exDone} / ${exTotal}</span></div><div class="progress-bar-outer"><div class="progress-bar-inner" style="width:${exPct}%"></div></div></div>`;
+  }
+  h+='<div class="wk-items">';
+  if(!twMainItems.length&&!twExtraItems.length)h+='<div class="wk-empty">尚未加入本週任務</div>';
+  else{
+    twMainItems.forEach(a=>{h+=wkItemHtml(a.id,a.item,done,'this')});
+    if(twExtraItems.length>0&&twMainItems.length>0)h+='<div style="padding:6px 12px;font-size:12px;color:#90b8e0;font-weight:700;letter-spacing:1px">✦ Extra</div>';
+    twExtraItems.forEach(a=>{h+=wkItemHtml(a.id,a.item,done,'this')});
+  }
+  h+=`</div></div>
+    <div class="wk-section blue">
+      <div class="wk-section-top"><span class="wk-section-title">🔵 下週任務</span></div>
+      <div class="wk-period">執行期間：${fmtDW(nextTue)} ~ ${fmtDW(nextMon)}</div>
+      <div class="wk-countdown" id="nwCountdown">距開始還有 ...</div>
+      <div class="wk-progress"><div class="wk-progress-label"><span>下週進度</span><span>${nwDone} / ${nwTotal}</span></div><div class="progress-bar-outer"><div class="progress-bar-inner" style="width:${nwPct}%"></div></div></div>
+      <div class="wk-items">`;
+  if(!nwItems.length)h+='<div class="wk-empty">尚未加入下週任務</div>';
+  else nwItems.forEach(a=>{h+=wkItemHtml(a.id,a.item,done,'next')});
+  h+='</div></div>';
+
+  const hist=ldA(K.wkHistory);
+  h+='<div class="wk-history-title">歷史紀錄</div>';
+  if(!hist.length){h+='<div class="wk-empty">尚無歷史紀錄</div>'}
+  else{hist.forEach((rec,idx)=>{
+    const dc=rec.items.filter(i=>i.done).length,tt=rec.items.length;
+    const pctStr=tt?Math.round(dc/tt*100)+'%':'0%';
+    let extraStr='';
+    if(rec.extra&&rec.extra.length>0){const ed=rec.extra.filter(i=>i.done).length,et=rec.extra.length;extraStr=` ｜ Extra ${et?Math.round(ed/et*100)+'%':'0%'} (${ed}/${et})`}
+    h+=`<div class="history-week" data-hidx="${idx}"><div class="history-week-header"><div class="history-week-header-left"><span class="history-arrow">&#9654;</span><span class="history-week-label">${eh(rec.week)} 週</span></div><span class="history-week-count">${pctStr} (${dc}/${tt})${extraStr}</span></div><div class="history-week-body">`;
+    rec.items.forEach(i=>{h+=`<div class="history-item"><span class="${i.done?'hi-check':'hi-miss'}">${i.done?'✓':'✗'}</span><span class="hi-name">${eh(i.item)}</span><span class="hi-cat">${eh(i.cat)}</span></div>`});
+    if(rec.extra&&rec.extra.length>0){h+='<div style="padding:6px 18px;font-size:12px;color:#90b8e0;font-weight:700">✦ Extra</div>';rec.extra.forEach(i=>{h+=`<div class="history-item"><span class="${i.done?'hi-check':'hi-miss'}">${i.done?'✓':'✗'}</span><span class="hi-name">${eh(i.item)}</span><span class="hi-cat">${eh(i.cat)}</span></div>`})}
+    h+='</div></div>'});}
+  h+='</div>';
+  const wc=document.getElementById('weeklyContent');wc.innerHTML=h;
+
+  // Countdown timer
+  const deadlineMs=thisMon.getTime()+1; // Mon 23:59:59.999 + 1ms = Tue 00:00
+  const nextStartMs=nextTue.getTime();
+  function updateCountdown(){
+    const n=getNow().getTime();
+    const twEl=document.getElementById('twCountdown'),nwEl=document.getElementById('nwCountdown');
+    if(twEl)twEl.textContent='距截止還有 '+fmtCountdown(deadlineMs-n);
+    if(nwEl)nwEl.textContent='距開始還有 '+fmtCountdown(nextStartMs-n);
+  }
+  updateCountdown();
+  countdownTimer=setInterval(updateCountdown,1000);
+
+  wc.querySelectorAll('.cb').forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();const w=el.closest('.item-wrap'),id=w.dataset.id,d=ld(K.checked);d[id]=!d[id];if(!d[id])delete d[id];sv(K.checked,d);render()})});
+  wc.querySelectorAll('.btn-wk-remove').forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();const id=el.dataset.id,key=el.dataset.wkkey,w=ld(key);delete w[id];sv(key,w);render()})});
+  wc.querySelectorAll('.btn-wk-move-next').forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();const id=el.dataset.id;
+    const t=ld(K.thisWeek);delete t[id];sv(K.thisWeek,t);
+    const n=ld(K.nextWeek);n[id]=true;sv(K.nextWeek,n);
+    const ex=ld(K.wkExtra);delete ex[id];sv(K.wkExtra,ex);
+    render()})});
+  wc.querySelectorAll('.btn-wk-move-this').forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();const id=el.dataset.id;
+    const n=ld(K.nextWeek);delete n[id];sv(K.nextWeek,n);
+    const t=ld(K.thisWeek);t[id]=true;sv(K.thisWeek,t);
+    markExtraIfNeeded(id);
+    render()})});
+  wc.querySelectorAll('.history-week-header').forEach(el=>{el.addEventListener('click',()=>el.closest('.history-week').classList.toggle('open'))})
+}
+
+function bindAll(root){
+  const app=document.getElementById('app');
+  function bToggle(sel,sk,da,pc){app.querySelectorAll(sel).forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();const c=el.closest(pc);c.classList.toggle('open');const cur=ldA(sk),n=c.dataset[da];if(c.classList.contains('open')){if(!cur.includes(n))cur.push(n)}else{const i=cur.indexOf(n);if(i!==-1)cur.splice(i,1)}localStorage.setItem(sk,JSON.stringify(cur))})})}
+  bToggle('.major-header',K.majorC,'major','.major-group');bToggle('.mid-header',K.midC,'mid','.mid-group');bToggle('.subgrp-header',K.subgrpC,'subgrp','.sub-group');bToggle('.cat-header',K.collapse,'cat','.category');
+
+  root.querySelectorAll('.cb').forEach(el=>{if(el.closest('[data-wktype]'))return;el.addEventListener('click',e=>{e.stopPropagation();const w=el.closest('.item-wrap'),id=w.dataset.id,s=ld(K.checked);s[id]=!s[id];if(!s[id])delete s[id];sv(K.checked,s);render()})});
+
+  root.querySelectorAll('.btn-sort').forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();closeDd();const id=el.dataset.id,pri=ld(K.priority),tw=ld(K.thisWeek),nw=ld(K.nextWeek),cur=pri[id]||'',isTw=!!tw[id],isNw=!!nw[id];
+    const dd=document.createElement('div');dd.className='sort-dropdown';
+    dd.innerHTML=`<div class="sort-option ${cur==='high'?'active':''}" data-val="high">優先</div><div class="sort-option ${cur==='low'?'active':''}" data-val="low">次要</div><div class="sort-option ${isTw?'active':''}" data-val="thisweek">本週任務 ⭐</div><div class="sort-option ${isNw?'active':''}" data-val="nextweek">下週任務 🔵</div><div class="sort-option" data-val="">取消排序</div>`;
+    const rect=el.getBoundingClientRect();dd.style.top=(rect.bottom+4)+'px';dd.style.left=Math.max(0,rect.right-160)+'px';document.body.appendChild(dd);
+    dd.querySelectorAll('.sort-option').forEach(opt=>{opt.addEventListener('click',ev=>{ev.stopPropagation();const val=opt.dataset.val;
+      if(val==='thisweek'){const w=ld(K.thisWeek);const wasOn=!!w[id];w[id]=!w[id];if(!w[id]){delete w[id];const ex=ld(K.wkExtra);delete ex[id];sv(K.wkExtra,ex)}else{markExtraIfNeeded(id)};sv(K.thisWeek,w)}
+      else if(val==='nextweek'){const w=ld(K.nextWeek);w[id]=!w[id];if(!w[id])delete w[id];sv(K.nextWeek,w)}
+      else{const p=ld(K.priority);if(val)p[id]=val;else delete p[id];sv(K.priority,p)}
+      closeDd();render()})});
+    setTimeout(()=>{const h=()=>{closeDd();document.removeEventListener('click',h)};document.addEventListener('click',h)},0)})});
+
+  root.querySelectorAll('.wk-this,.wk-next').forEach(el=>{if(el.classList.contains('btn-wk-move-next')||el.classList.contains('btn-wk-move-this'))return;el.addEventListener('click',e=>{e.stopPropagation();const id=el.dataset.id,wk=el.dataset.wk,key=wk==='this'?K.thisWeek:K.nextWeek,w=ld(key);w[id]=!w[id];if(!w[id]){delete w[id];if(wk==='this'){const ex=ld(K.wkExtra);delete ex[id];sv(K.wkExtra,ex)}}else if(wk==='this'){markExtraIfNeeded(id)};sv(key,w);render()})});
+
+  root.querySelectorAll('.btn-edit').forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();const id=el.dataset.id,orig=el.dataset.original,cn=dn(id,orig);showModal('修改名稱',`<input type="text" id="editInput" value="${ea(cn)}" />`,()=>{const v=document.getElementById('editInput').value.trim();if(!v)return;const r=ld(K.rename);if(v===orig)delete r[id];else r[id]=v;sv(K.rename,r);render()})})});
+  root.querySelectorAll('.btn-note').forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();const id=el.dataset.id,cn=ld(K.note)[id]||'';showModal('備註',`<textarea id="noteInput" placeholder="輸入備註...">${eh(cn)}</textarea>`,()=>{const v=document.getElementById('noteInput').value.trim(),n=ld(K.note);if(v)n[id]=v;else delete n[id];sv(K.note,n);render()})})});
+  root.querySelectorAll('.btn-detail').forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();const id=el.dataset.id,orig=el.dataset.original;showDetailModal(id,dn(id,orig),ld(K.detail)[id]||'')})})
+}
+
+function eh(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML}
+function ea(t){return t.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+document.querySelectorAll('.view-btn').forEach(b=>{b.addEventListener('click',()=>{document.querySelectorAll('.view-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');currentView=b.dataset.view;render()})});
+
+// One-time: clear history
+if(!localStorage.getItem('barwish_history_cleared_v1')){localStorage.removeItem('barwish_wk_history');localStorage.setItem('barwish_history_cleared_v1','1')}
+
+// Init: fetch Taipei time, then render
+(async()=>{
+  await fetchTaipeiTime();
+  render();
+})();
+</script>
+</body>
+</html>
